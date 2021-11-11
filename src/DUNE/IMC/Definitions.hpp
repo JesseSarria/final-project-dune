@@ -28,7 +28,7 @@
 //***************************************************************************
 // Automatically generated.                                                 *
 //***************************************************************************
-// IMC XML MD5: 5563261871977bdb0b45e3d1e53b575b                            *
+// IMC XML MD5: f887a927f1b2d4d8f13d9a48e889acc4                            *
 //***************************************************************************
 
 #ifndef DUNE_IMC_DEFINITIONS_HPP_INCLUDED_
@@ -16116,6 +16116,85 @@ namespace DUNE
       getVariableSerializationSize(void) const
       {
         return IMC::getSerializationSize(custom);
+      }
+
+      void
+      fieldsToJSON(std::ostream& os__, unsigned nindent__) const;
+    };
+
+    //! Expanding Square.
+    class ExpandingSquare: public Maneuver
+    {
+    public:
+      //! Latitude WGS-84.
+      fp64_t lat;
+      //! Longitude WGS-84.
+      fp64_t lon;
+      //! Z Reference.
+      fp32_t z;
+      //! Z Units.
+      uint8_t z_units;
+      //! Speed.
+      fp32_t speed;
+      //! Speed Units.
+      uint8_t speed_units;
+      //! Bearing.
+      fp64_t bearing;
+      //! Width.
+      fp32_t width;
+      //! Hstep.
+      fp32_t hstep;
+      //! First Curve Right.
+      uint8_t first_curve_right;
+
+      static uint16_t
+      getIdStatic(void)
+      {
+        return 3001;
+      }
+
+      ExpandingSquare(void);
+
+      ExpandingSquare*
+      clone(void) const
+      {
+        return new ExpandingSquare(*this);
+      }
+
+      void
+      clear(void);
+
+      bool
+      fieldsEqual(const Message& msg__) const;
+
+      int
+      validate(void) const;
+
+      uint8_t*
+      serializeFields(uint8_t* bfr__) const;
+
+      uint16_t
+      deserializeFields(const uint8_t* bfr__, uint16_t size__);
+
+      uint16_t
+      reverseDeserializeFields(const uint8_t* bfr__, uint16_t size__);
+
+      uint16_t
+      getId(void) const
+      {
+        return ExpandingSquare::getIdStatic();
+      }
+
+      const char*
+      getName(void) const
+      {
+        return "ExpandingSquare";
+      }
+
+      unsigned
+      getFixedSerializationSize(void) const
+      {
+        return 43;
       }
 
       void

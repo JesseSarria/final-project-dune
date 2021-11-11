@@ -28,7 +28,7 @@
 //***************************************************************************
 // Automatically generated.                                                 *
 //***************************************************************************
-// IMC XML MD5: 5563261871977bdb0b45e3d1e53b575b                            *
+// IMC XML MD5: f887a927f1b2d4d8f13d9a48e889acc4                            *
 //***************************************************************************
 
 MESSAGE(1, EntityState)
@@ -233,6 +233,7 @@ MESSAGE(485, Launch)
 MESSAGE(486, Drop)
 MESSAGE(487, ScheduledGoto)
 MESSAGE(488, RowsCoverage)
+MESSAGE(3001, ExpandingSquare)
 MESSAGE(489, Sample)
 MESSAGE(490, ImageTracking)
 MESSAGE(491, Takeoff)
