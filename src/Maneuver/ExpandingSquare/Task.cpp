@@ -1,6 +1,6 @@
 #include <DUNE/DUNE.hpp>
 #include <list>
-#include <math.h>
+
 namespace Maneuver
 {
     namespace ExpandingSquare
@@ -13,7 +13,7 @@ namespace Maneuver
 
             IMC::DesiredPath m_path;
 
-            list<double> waypoints;
+            std::list<double> waypoints;
 
             Task(const std::string& name, Tasks::Context& ctx):
 
@@ -22,99 +22,52 @@ namespace Maneuver
                 bindToManeuver<Task, IMC::ExpandingSquare>();
             }
 
-            void onManeuverActivation(void) {...}
-            void onManeuverDeactivation(void) {...}
-            void consume(const IMC::ExpandingSquare* maneuver) 
+            void 
+            onManeuverActivation(void) 
             {
-
-                m_maneuver = *maneuver;
+                war("The ExpandingSquare manuever starts.");
+            }
+            //void onManeuverDeactivation(void) {...}
+            void 
+            consume(const IMC::ExpandingSquare* maneuver) 
+            {
+                setControl(IMC::CL_PATH);
 
                 m_path.speed = maneuver->speed;
                 m_path.speed_units = maneuver->speed_units;
                 m_path.end_z = maneuver->z;
                 m_path.end_z_units = maneuver->z_units;
 
-                bool clockwise_rotation = false;
+                m_maneuver = *maneuver;
 
-                double lat = maneuver->lat;
-                double lon = maneuver->lon;
-                double spirals = maneuver->width/(2*maneuver->hstep);
+                makePath();
 
-                if (spirals < 1)
-                    double offset_x = maneuver->width/2;
-                    double offset_y = 0;
-                    Coordinates::WGS84::displace(offset_x, offset_y, &lat, &lon);
-                    Angles::rotate(maneuver->bearing, clockwise_rotation, &lat, &lon);
-
-                else if {
-                    double offset_x = maneuver->hstep;
-                    double offset_y = 0;
-                    Coordinates::WGS84::displace(offset_x, offset_y, &lat, &lon);
-                    Angles::rotate(maneuver->bearing, clockwise_rotation, &lat, &lon);
-                    waypoints.push_back(lat);
-                    waypoints.push_back(lon);
-                    lat = maneuver->lat;
-                    lon = maneuver->lon;
-                    if (maneuver->first_curve_right) 
-                    {
-                        for (int j = 0; j < floor(spirals); j++) {
-                            for (int i = 0; i < 4; i++) {
-                                if (i == 0) {
-                                    double offset_x = (j+1)*maneuver->hstep;
-                                    double offset_y = (j+1)*maneuver->hstep;
-                                }
-                                if (i == 1) {
-                                    double offset_x = -(j+1)*maneuver->hstep;
-                                    double offset_y = (j+1)*maneuver->hstep;
-                                }
-                                if (i == 2) {
-                                    double offset_x = -(j+1)*maneuver->hstep;
-                                    double offset_y = -(j+1)*maneuver->hstep;
-                                }
-                                if (i == 3) {
-                                    if (floor(spirals) == j+1) {
-                                        double offset_x = (j+1)*maneuver->hstep + (maneuver->width - 2*(j+1)*maneuver->hstep)/2;
-                                        double offset_y = -(j+1)*maneuver->hstep;
-                                    }
-                                    else if {
-                                        double offset_x = (j+2)*maneuver->hstep;
-                                        double offset_y = -(j+1)*maneuver->hstep;
-                                    }
-                                }
-                                double offset_x = maneuver->hstep;
-                                double offset_y = maneuver->hstep;
-                                Coordinates::WGS84::displace(offset_x, offset_y, &lat, &lon);
-                                Angles::rotate(maneuver->bearing, clockwise_rotation, &lat, &lon);
-                                waypoints.push_back(lat);
-                                waypoints.push_back(lon);
-                                lat = maneuver->lat;
-                                lon = maneuver->lon;
-                            }
-                        }    
-                    }
-                }
-
-                lat = waypoints.front()->double;
+                double lat = waypoints.front();
                 waypoints.pop_front();
-                lon = waypoints.front()->double;
+                double lon = waypoints.front();
                 waypoints.pop_front();
 
                 sendPath(lat, lon);
 
             }
 
-            void onPathControlState(const IMC::PathControlState* pcs) 
+            void 
+            onPathControlState(const IMC::PathControlState* pcs) 
             {
 
-                if (!(pcs->flags & IMC::PathControlState::FL_NEAR))
-                {
-                    signalProgress(pcs->eta, "NOT CLOSE ENOUGH!");
+                if (!(pcs->flags & IMC::PathControlState::FL_NEAR)) {
+                    signalProgress(pcs->eta);
                     return;
                 }
 
-                double lat = waypoints.front()->double;
+                if (waypoints.empty()) {
+                    signalCompletion();
+                    return;
+                }
+
+                double lat = waypoints.front();
                 waypoints.pop_front();
-                double lon = waypoints.front()->double;
+                double lon = waypoints.front();
                 waypoints.pop_front();
 
                 sendPath(lat, lon);
@@ -122,13 +75,121 @@ namespace Maneuver
 
 
 
-            void sendPath(double lat, double lon)
+            void 
+            sendPath(double lat, double lon)
             {
                 // Calculate WGS-84 coordinates and fill DesiredPath message
                 m_path.end_lat = lat;
                 m_path.end_lon = lon;
                 dispatch(m_path);
             }
+
+            void
+            makePath()
+            {
+                bool counter_clock_rot = false;
+                int spirals = m_maneuver.width/(2*m_maneuver.hstep);
+
+                double lat = m_maneuver.lat;
+                double lon = m_maneuver.lon;
+
+                double offset_x = m_maneuver.width/2;
+                double offset_y = 0;
+                double& r_offset_x = offset_x;
+                double& r_offset_y = offset_y;
+
+                if (spirals < 1) {
+                    offset_x = m_maneuver.width/2;
+                    offset_y = 0;
+                    Angles::rotate(m_maneuver.bearing, counter_clock_rot, r_offset_x, r_offset_y);
+                    Coordinates::WGS84::displace(offset_x, offset_y, &lat, &lon);
+                    waypoints.push_back(lat);
+                    waypoints.push_back(lon);
+                }
+
+                else {
+                    offset_x = m_maneuver.hstep;
+                    offset_y = 0;
+                    Angles::rotate(m_maneuver.bearing, counter_clock_rot, r_offset_x, r_offset_y);
+                    Coordinates::WGS84::displace(offset_x, offset_y, &lat, &lon);
+                    waypoints.push_back(lat);
+                    waypoints.push_back(lon);
+                    lat = m_maneuver.lat;
+                    lon = m_maneuver.lon;
+                    if (m_maneuver.first_curve_right) {
+                        for (int j = 0; j < spirals; j++) {
+                            for (int i = 0; i < 4; i++) {
+                                if (i == 0) {
+                                    offset_x = (j+1)*m_maneuver.hstep;
+                                    offset_y = (j+1)*m_maneuver.hstep;
+                                }
+                                else if (i == 1) {
+                                    offset_x = -(j+1)*m_maneuver.hstep;
+                                    offset_y = (j+1)*m_maneuver.hstep;
+                                }
+                                else if (i == 2) {
+                                    offset_x = -(j+1)*m_maneuver.hstep;
+                                    offset_y = -(j+1)*m_maneuver.hstep;
+                                }
+                                else if (i == 3) {
+                                    if (spirals == j+1) {
+                                        offset_x = (j+1)*m_maneuver.hstep + (m_maneuver.width - 2*(j+1)*m_maneuver.hstep)/2;
+                                        offset_y = -(j+1)*m_maneuver.hstep;
+                                    }
+                                    else {
+                                        offset_x = (j+2)*m_maneuver.hstep;
+                                        offset_y = -(j+1)*m_maneuver.hstep;
+                                    }
+                                }
+                                Angles::rotate(m_maneuver.bearing, counter_clock_rot, r_offset_x, r_offset_y);
+                                Coordinates::WGS84::displace(offset_x, offset_y, &lat, &lon);
+                                waypoints.push_back(lat);
+                                waypoints.push_back(lon);
+                                lat = m_maneuver.lat;
+                                lon = m_maneuver.lon;
+                            }
+                        }    
+                    }
+
+                    else {
+                        for (int j = 0; j < spirals; j++) {
+                            for (int i = 0; i < 4; i++) {
+                                if (i == 0) {
+                                    offset_x = (j+1)*m_maneuver.hstep;
+                                    offset_y = -(j+1)*m_maneuver.hstep;
+                                }
+                                else if (i == 1) {
+                                    offset_x = -(j+1)*m_maneuver.hstep;
+                                    offset_y = -(j+1)*m_maneuver.hstep;
+                                }
+                                else if (i == 2) {
+                                    offset_x = -(j+1)*m_maneuver.hstep;
+                                    offset_y = (j+1)*m_maneuver.hstep;
+                                }
+                                else if (i == 3) {
+                                    if (spirals == j+1) {
+                                        offset_x = (j+1)*m_maneuver.hstep + (m_maneuver.width - 2*(j+1)*m_maneuver.hstep)/2;
+                                        offset_y = (j+1)*m_maneuver.hstep;
+                                    }
+                                    else {
+                                        offset_x = (j+2)*m_maneuver.hstep;
+                                        offset_y = (j+1)*m_maneuver.hstep;
+                                    }
+                                }
+                                Angles::rotate(m_maneuver.bearing, counter_clock_rot, r_offset_x, r_offset_y);
+                                Coordinates::WGS84::displace(offset_x, offset_y, &lat, &lon);
+                                waypoints.push_back(lat);
+                                waypoints.push_back(lon);
+                                lat = m_maneuver.lat;
+                                lon = m_maneuver.lon;
+                            }
+                        }
+                    }
+                }
+            }
+
         };
     }
 }
+
+DUNE_TASK
